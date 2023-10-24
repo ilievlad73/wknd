@@ -10,6 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
+const ENABLE_CONDOR = true;
+
 /**
  * log RUM if part of the sample.
  * @param {string} checkpoint identifies the checkpoint in funnel
@@ -68,6 +70,18 @@ export function sampleRUM(checkpoint, data = {}) {
         },
       };
       sendPing(data);
+      if (sampleRUM.cases[checkpoint]) { sampleRUM.cases[checkpoint](); }
+    } else if(ENABLE_CONDOR) {
+      // we need viewmedia to be loaded
+      sampleRUM.cases = sampleRUM.cases || {
+        lazy: () => {
+          // use classic script to avoid CORS issues
+          const script = document.createElement('script');
+          script.src = 'https://rum.hlx.page/.rum/@adobe/helix-rum-enhancer@^1/src/index.js';
+          document.head.appendChild(script);
+          return true;
+        },
+      };
       if (sampleRUM.cases[checkpoint]) { sampleRUM.cases[checkpoint](); }
     }
     if (sampleRUM.always[checkpoint]) { sampleRUM.always[checkpoint](data); }

@@ -14,7 +14,7 @@
  * Customer's XDM schema namespace
  * @type {string}
  */
-const CUSTOM_SCHEMA_NAMESPACE = '_sitesinternal';
+const CUSTOM_SCHEMA_NAMESPACE = '_aresprodvalidation';
 
 /**
  * Returns experiment id and variant running
@@ -26,6 +26,18 @@ export function getExperimentDetails() {
   }
   const { id: experimentId, selectedVariant: experimentVariant } = window.hlx.experiment;
   return { experimentId, experimentVariant };
+}
+
+/**
+ * Return experienceId
+ */
+export function getExperienceId() {
+  const experimentDetails = getExperimentDetails();
+  if(!experimentDetails) {
+    return `${window.location.pathname}.${document.lastModified}`;
+  }
+  const { experimentId, experimentVariant } = experimentDetails;
+  return `${window.location.pathname}.${document.lastModified}.${experimentId}.${experimentVariant}.`
 }
 
 /**
@@ -49,8 +61,8 @@ function getAlloyInitScript() {
 function getDatastreamConfiguration() {
   // Sites Internal
   return {
-    edgeConfigId: 'caad777c-c410-4ceb-8b36-167f1cecc3de',
-    orgId: '908936ED5D35CC220A495CD4@AdobeOrg',
+    edgeConfigId: '97d75a23-f0ec-4231-bbbd-ef084b595593',
+    orgId: '088D2D305B47DD820A495E75@AdobeOrg'
   };
 }
 
@@ -119,6 +131,57 @@ async function sendAnalyticsEvent(xdmData) {
     documentUnloading: true,
     xdm: xdmData,
   });
+}
+
+/**
+ * Customer's Condor assets event dataset id
+ * @type {string}
+ */
+const CONDOR_DATASET_ID = '6532a6d76cf63d28d4f130dd';
+
+
+/**
+ * Sends an analytics condor event to alloy
+ * @param xdmData - the xdm data object
+ * @returns {Promise<*>}
+ */
+async function sendCondorEvent(xdmData) {
+  // eslint-disable-next-line no-undef
+  if (!alloy) {
+    console.warn('alloy not initialized, cannot send analytics event');
+    return Promise.resolve();
+  }
+  // eslint-disable-next-line no-undef
+  return alloy('sendEvent', {
+    documentUnloading: true,
+    xdm: xdmData,
+    edgeConfigOverrides: {
+      com_adobe_experience_platform: {
+        datasets: { 
+          event: { datasetId: CONDOR_DATASET_ID }
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Basic tracking for assets views with alloy
+ * @param document
+ * @param additionalXdmFields
+ * @returns {Promise<*>}
+ */
+export async function analyticsTrackImageAssets(assets) {
+  const xdmData = {
+    [CUSTOM_SCHEMA_NAMESPACE]: {
+      condor: {
+        assets: { ids: assets },
+        experience: { id: getExperienceId() }
+      }
+    },
+  };
+
+  return sendCondorEvent(xdmData);
 }
 
 /**

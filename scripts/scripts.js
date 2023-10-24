@@ -20,6 +20,7 @@ import {
   analyticsTrackCWV,
   analyticsTrackError,
   initAnalyticsTrackingQueue,
+  analyticsTrackImageAssets,
   setupAnalyticsTrackingWithAlloy,
 } from './analytics/lib-analytics.js';
 
@@ -295,6 +296,21 @@ window.addEventListener('beforeunload', () => {
 sampleRUM.always.on('cwv', async (data) => {
   if (!data.cwv) return;
   Object.assign(cwv, data.cwv);
+});
+
+const assets = []; // no need to worry about duplicates since after one intersection rum will remove the observer
+
+// Forward the RUM view assets cached measurements to edge using WebSDK before the page unloads
+window.addEventListener('beforeunload', () => {
+  if (!assets.length) return;
+  analyticsTrackImageAssets(assets);
+});
+
+// Callback to RUM viewmedia checkpoint in order to cache the measurements
+sampleRUM.always.on('viewmedia', async ({ source, target }) => {
+  const targetSrcURL = new URL(target);
+  const targetId = targetSrcURL.pathname.slice(1); // drop leading slash
+  assets.push(targetId); // no need to worry about duplicates since after one intersection rum will remove the observer
 });
 
 sampleRUM.always.on('404', analyticsTrack404);
