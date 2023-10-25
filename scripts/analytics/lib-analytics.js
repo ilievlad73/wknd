@@ -29,15 +29,30 @@ export function getExperimentDetails() {
 }
 
 /**
+ * Return document last modified
+ */
+export function getLastModified() {
+  const lastModified = document.lastModified;
+  if(lastModified) {
+    const [month, day, year] = new Intl.DateTimeFormat('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }).format(new Date(lastModified)).split('/');
+    return `${year}-${month}-${day}`;
+  }
+
+  return 'unknown';
+}
+
+/**
  * Return experienceId
  */
 export function getExperienceId() {
-  const experimentDetails = getExperimentDetails();
-  if(!experimentDetails) {
-    return `${window.location.pathname}.${document.lastModified}`;
+  if (!window.hlx || !window.hlx.experiment) {
+    return `${window.location.href}.${getLastModified()}`;
   }
-  const { experimentId, experimentVariant } = experimentDetails;
-  return `${window.location.pathname}.${document.lastModified}.${experimentId}.${experimentVariant}.`
+
+  const { selectedVariant, variants } = window.hlx.experiment;
+  const url = new URL(window.location.href);
+  url.pathname = variants[selectedVariant].pages[0];
+  return `${url.href}.${getLastModified()}`;
 }
 
 /**
@@ -175,8 +190,8 @@ export async function analyticsTrackImageAssets(assets) {
   const xdmData = {
     [CUSTOM_SCHEMA_NAMESPACE]: {
       condor: {
-        assets: { ids: assets },
-        experience: { id: getExperienceId() }
+        assets: { ids: assets, idsVersion: '1' },
+        experience: { id: getExperienceId(), idVersion: '1' }
       }
     },
   };

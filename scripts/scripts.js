@@ -308,6 +308,7 @@ window.addEventListener('beforeunload', () => {
 
 // Callback to RUM viewmedia checkpoint in order to cache the measurements
 sampleRUM.always.on('viewmedia', async ({ source, target }) => {
+  // TODO: add elem type check for img tag. Would need to add run enhancer some changes (ex: sampleRUM.mediaobserver would be great to yield the element tagName or type or something)
   const targetSrcURL = new URL(target);
   const targetId = targetSrcURL.pathname.slice(1); // drop leading slash
   assets.push(targetId); // no need to worry about duplicates since after one intersection rum will remove the observer
