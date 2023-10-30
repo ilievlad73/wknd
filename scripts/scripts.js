@@ -2,8 +2,10 @@ import {
   sampleRUM,
   buildBlock,
   getMetadata,
+  getAllMetadata,
   loadHeader,
   loadFooter,
+  toCamelCase,
   decorateButtons,
   decorateIcons,
   decorateSections,
@@ -13,6 +15,7 @@ import {
   loadBlocks,
   loadCSS,
   toClassName,
+  loadScript,
 } from './lib-franklin.js';
 import {
   analyticsTrack404,
@@ -27,18 +30,23 @@ import {
 const LCP_BLOCKS = []; // add your LCP blocks to the list
 window.hlx.RUM_GENERATION = 'project-1'; // add your RUM generation information here
 
-// Define the custom audiences mapping for experimentation
-const EXPERIMENTATION_CONFIG = {
-  audiences: {
-    device: {
-      mobile: () => window.innerWidth < 600,
-      desktop: () => window.innerWidth >= 600,
-    },
-    visitor: {
-      new: () => !localStorage.getItem('franklin-visitor-returning'),
-      returning: () => !!localStorage.getItem('franklin-visitor-returning'),
-    },
-  },
+const AUDIENCES = {
+  all: () => true,
+  mobile: () => window.innerWidth < 600,
+  desktop: () => window.innerWidth >= 600,
+  new: () => !localStorage.getItem('franklin-visitor-returning'),
+  returning: () => !!localStorage.getItem('franklin-visitor-returning'),
+};
+
+// Define an execution context
+const pluginContext = {
+  getAllMetadata,
+  getMetadata,
+  loadCSS,
+  loadScript,
+  sampleRUM,
+  toCamelCase,
+  toClassName,
 };
 
 /**
@@ -177,11 +185,12 @@ async function loadEager(doc) {
   decorateTemplateAndTheme();
 
   // load experiments
-  const experiment = toClassName(getMetadata('experiment'));
-  const instantExperiment = getMetadata('instant-experiment');
-  if (instantExperiment || experiment) {
-    const { runExperiment } = await import('./experimentation/index.js');
-    await runExperiment(experiment, instantExperiment, EXPERIMENTATION_CONFIG);
+  if (getMetadata('experiment')
+    || Object.keys(getAllMetadata('campaign')).length
+    || Object.keys(getAllMetadata('audience')).length) {
+    // eslint-disable-next-line import/no-relative-packages
+    const { loadEager: runEager } = await import('../plugins/experience-decisioning/src/index.js');
+    await runEager(document, { audiences: AUDIENCES }, pluginContext);
   }
 
   // load demo config
@@ -244,16 +253,6 @@ async function loadLazy(doc) {
   sampleRUM.observe(main.querySelectorAll('div[data-block-name]'));
   sampleRUM.observe(main.querySelectorAll('picture > img'));
 
-  // Load experimentation preview overlay
-  if (window.location.hostname === 'localhost' || window.location.hostname.endsWith('.hlx.page')) {
-    const preview = await import(`${window.hlx.codeBasePath}/tools/preview/preview.js`);
-    await preview.default();
-    if (window.hlx.experiment) {
-      const experimentation = await import(`${window.hlx.codeBasePath}/tools/preview/experimentation.js`);
-      experimentation.default();
-    }
-  }
-
   // Mark customer as having viewed the page once
   localStorage.setItem('franklin-visitor-returning', true);
 
@@ -264,6 +263,14 @@ async function loadLazy(doc) {
   // eslint-disable-next-line import/no-relative-packages
   const { initConversionTracking } = await import('../plugins/rum-conversion/src/index.js');
   await initConversionTracking.call(context, document);
+
+  if ((getMetadata('experiment')
+    || Object.keys(getAllMetadata('campaign')).length
+    || Object.keys(getAllMetadata('audience')).length)) {
+    // eslint-disable-next-line import/no-relative-packages
+    const { loadLazy: runLazy } = await import('../plugins/experience-decisioning/src/index.js');
+    await runLazy(document, { audiences: AUDIENCES }, pluginContext);
+  }
 }
 
 /**

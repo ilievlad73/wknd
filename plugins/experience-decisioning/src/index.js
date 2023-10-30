@@ -92,6 +92,7 @@ async function replaceInner(path, element) {
     const html = await resp.text();
     // eslint-disable-next-line no-param-reassign
     element.innerHTML = html;
+    window.hlx.servedExperience = path;
     return true;
   } catch (e) {
     // eslint-disable-next-line no-console
@@ -434,7 +435,7 @@ export async function runExperiment(document, options, context) {
 
   // Fullpage content experiment
   document.body.classList.add(`experiment-${experimentConfig.id}`);
-  const result = await replaceInner(pages[0], document.querySelector('main'));
+  const result = await replaceInner(pages[index], document.querySelector('main')); // TODO: Revert on upgrade after this gets merged
   if (!result) {
     // eslint-disable-next-line no-console
     console.debug(`failed to serve variant ${window.hlx.experiment.selectedVariant}. Falling back to ${experimentConfig.variantNames[0]}.`);

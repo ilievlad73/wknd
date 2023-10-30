@@ -49,9 +49,8 @@ export function getExperienceId() {
     return `${window.location.href}.${getLastModified()}`;
   }
 
-  const { selectedVariant, variants } = window.hlx.experiment;
   const url = new URL(window.location.href);
-  url.pathname = variants[selectedVariant].pages[0];
+  url.pathname = window.hlx.servedExperience
   return `${url.href}.${getLastModified()}`;
 }
 
