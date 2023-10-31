@@ -31,10 +31,11 @@ export function getExperimentDetails() {
 /**
  * Return document last modified
  */
+const dateTimeFormatOptions = ['en-US', { month:'2-digit', day:'2-digit', year:'numeric' }];
 export function getLastModified() {
   const lastModified = document.lastModified;
   if(lastModified) {
-    const [month, day, year] = new Intl.DateTimeFormat('en-US', { month:'2-digit', day:'2-digit', year:'numeric' }).format(new Date(lastModified)).split('/');
+    const [month, day, year] = new Intl.DateTimeFormat(...dateTimeFormatOptions).format(new Date(lastModified)).split('/');
     return `${year}-${month}-${day}`;
   }
 
@@ -45,12 +46,32 @@ export function getLastModified() {
  * Return experienceId
  */
 export function getExperienceId() {
-  if (!window.hlx || !window.hlx.experiment) {
-    return `${window.location.href}.${getLastModified()}`;
+  const url = new URL(window.location.href);
+  if (!window.hlx) {
+    return `${url.href}.${getLastModified()}`;
   }
 
-  const url = new URL(window.location.href);
-  url.pathname = window.hlx.servedExperience
+  // check for campaigns, experiments, audiences
+  let servedExperiencePathname = null;
+  if(window.hlx.campaign && window.hlx.campaign.servedExperience){
+    servedExperiencePathname = window.hlx.campaign.servedExperience;
+  } else if(window.hlx.experiment && window.hlx.experiment.servedExperience){
+    servedExperiencePathname = window.hlx.experiment.servedExperience;
+  } else if(window.hlx.audience && window.hlx.audience.servedExperience){
+    servedExperiencePathname = window.hlx.audience.servedExperience;
+  }
+
+  if(servedExperiencePathname) {
+    if(servedExperiencePathname.endsWith('index.plain.html')) {
+      servedExperiencePathname = servedExperiencePathname.slice(0, -14);
+    }
+    if(servedExperiencePathname.endsWith('plain.html')) {
+      servedExperiencePathname = servedExperiencePathname.slice(0, -10);
+    }
+    url.pathname = servedExperiencePathname;
+    return `${url.href}.${getLastModified()}`;
+  }
+
   return `${url.href}.${getLastModified()}`;
 }
 
