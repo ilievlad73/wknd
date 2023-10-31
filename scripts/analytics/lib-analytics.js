@@ -14,7 +14,7 @@
  * Customer's XDM schema namespace
  * @type {string}
  */
-const CUSTOM_SCHEMA_NAMESPACE = '_aresprodvalidation';
+const CUSTOM_SCHEMA_NAMESPACE = '_sitesinternal';
 
 /**
  * Returns experiment id and variant running
@@ -75,8 +75,8 @@ function getAlloyInitScript() {
 function getDatastreamConfiguration() {
   // Sites Internal
   return {
-    edgeConfigId: '97d75a23-f0ec-4231-bbbd-ef084b595593',
-    orgId: '088D2D305B47DD820A495E75@AdobeOrg'
+    edgeConfigId: '5b508100-24e1-4657-8387-e325f5e5177b',
+    orgId: '908936ED5D35CC220A495CD4@AdobeOrg',
   };
 }
 
@@ -151,7 +151,7 @@ async function sendAnalyticsEvent(xdmData) {
  * Customer's Condor assets event dataset id
  * @type {string}
  */
-const CONDOR_DATASET_ID = '6532a6d76cf63d28d4f130dd';
+const CONDOR_DATASET_ID = '653bdd5474613028d25143cb';
 
 
 /**
