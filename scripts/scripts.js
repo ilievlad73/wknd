@@ -23,7 +23,7 @@ import {
   analyticsTrackCWV,
   analyticsTrackError,
   initAnalyticsTrackingQueue,
-  analyticsTrackImageAssets,
+  analyticsTrackAssets,
   setupAnalyticsTrackingWithAlloy,
 } from './analytics/lib-analytics.js';
 
@@ -252,6 +252,8 @@ async function loadLazy(doc) {
   sampleRUM('lazy');
   sampleRUM.observe(main.querySelectorAll('div[data-block-name]'));
   sampleRUM.observe(main.querySelectorAll('picture > img'));
+  sampleRUM.observeAssets(main.querySelectorAll('div[data-block-name]'));
+  sampleRUM.observeAssets(main.querySelectorAll('picture > img'));
 
   // Mark customer as having viewed the page once
   localStorage.setItem('franklin-visitor-returning', true);
@@ -310,15 +312,50 @@ const assets = []; // no need to worry about duplicates since after one intersec
 // Forward the RUM view assets cached measurements to edge using WebSDK before the page unloads
 window.addEventListener('beforeunload', () => {
   if (!assets.length) return;
-  analyticsTrackImageAssets(assets);
+  analyticsTrackAssets(assets);
 });
 
-// Callback to RUM viewmedia checkpoint in order to cache the measurements
-sampleRUM.always.on('viewmedia', async ({ source, target }) => {
-  // TODO: add elem type check for img tag. Would need to add run enhancer some changes (ex: sampleRUM.mediaobserver would be great to yield the element tagName or type or something)
-  const targetSrcURL = new URL(target);
-  const targetId = targetSrcURL.pathname.slice(1); // drop leading slash
-  assets.push(targetId); // no need to worry about duplicates since after one intersection rum will remove the observer
+const assetSrcURL = (element) => {
+  let value = element.currentSrc || element.getAttribute('src');
+  if (value && value.startsWith('https://')) {
+    // resolve relative links
+    const srcURL =  new URL(value, window.location);
+    srcURL.search = '';
+    return srcURL;
+  };
+
+  const srcURL = new URL(value);
+  srcURL.search = '';
+  return srcURL;
+};
+
+const imageObserver = (window.IntersectionObserver) ? new IntersectionObserver((entries) => {
+  entries
+    .filter((entry) => entry.isIntersecting)
+    .forEach((entry) => {
+      imageObserver.unobserve(entry.target); // observe only once
+      assets.push(assetSrcURL(entry.target).href);
+    });
+}, { threshold: 0.25 }) : { observe: () => {}};
+
+const videoObserver = (window.IntersectionObserver) ? new IntersectionObserver((entries) => {
+  entries
+    .filter((entry) => entry.isIntersecting)
+    .forEach((entry) => {
+      videoObserver.unobserve(entry.target); // observe only once
+      assets.push(assetSrcURL(entry.target).href);
+    });
+}, { threshold: 0.25 }) : { observe: () => {}};
+
+sampleRUM.drain('observeAssets', (elements) => {
+  elements.forEach((element) => {
+    const tag = element.tagName.toLowerCase();
+    if (tag === 'img') {
+      imageObserver.observe(element);
+    } else if (tag === 'video') {
+      videoObserver.observe(element);
+    }
+  });
 });
 
 sampleRUM.always.on('404', analyticsTrack404);

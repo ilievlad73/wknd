@@ -206,7 +206,7 @@ async function sendCondorEvent(xdmData) {
  * @param additionalXdmFields
  * @returns {Promise<*>}
  */
-export async function analyticsTrackImageAssets(assets) {
+export async function analyticsTrackAssets(assets) {
   const xdmData = {
     [CUSTOM_SCHEMA_NAMESPACE]: {
       condor: {
