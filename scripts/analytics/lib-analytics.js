@@ -65,9 +65,10 @@ export function getExperienceId() {
     if(servedExperiencePathname.endsWith('index.plain.html')) {
       servedExperiencePathname = servedExperiencePathname.slice(0, -14);
     }
-    if(servedExperiencePathname.endsWith('plain.html')) {
-      servedExperiencePathname = servedExperiencePathname.slice(0, -10);
+    if(servedExperiencePathname.endsWith('.plain.html')) {
+      servedExperiencePathname = servedExperiencePathname.slice(0, -11);
     }
+
     url.pathname = servedExperiencePathname;
     return `${url.href}.${getLastModified()}`;
   }
