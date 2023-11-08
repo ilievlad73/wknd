@@ -211,8 +211,8 @@ export async function analyticsTrackAssets(assets) {
   const xdmData = {
     [CUSTOM_SCHEMA_NAMESPACE]: {
       condor: {
-        assets: { ids: assets, idsVersion: '1' },
-        experience: { id: getExperienceId(), idVersion: '1' }
+        assets: { ids: assets, idsVersion: '2' },
+        experience: { id: getExperienceId(), idVersion: '2' }
       }
     },
   };
