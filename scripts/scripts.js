@@ -316,7 +316,7 @@ window.addEventListener('beforeunload', () => {
 });
 
 const assetSrcURL = (element) => {
-  let value = element.currentSrc || element.getAttribute('src');
+  let value = element.currentSrc || element.src || element.getAttribute('src');
   if (value && value.startsWith('https://')) {
     // resolve relative links
     const srcURL =  new URL(value, window.location);
