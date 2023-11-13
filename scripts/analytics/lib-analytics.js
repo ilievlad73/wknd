@@ -180,57 +180,6 @@ async function sendAnalyticsEvent(xdmData) {
 }
 
 /**
- * Customer's Condor assets event dataset id
- * @type {string}
- */
-const CONDOR_DATASET_ID = '653bdd5474613028d25143cb';
-
-/**
- * Sends an analytics condor event to alloy
- * @param xdmData - the xdm data object
- * @returns {Promise<*>}
- */
-async function sendCondorEvent(xdmData) {
-  // eslint-disable-next-line no-undef
-  if (!alloy) {
-    console.warn('alloy not initialized, cannot send analytics event');
-    return Promise.resolve();
-  }
-  // eslint-disable-next-line no-undef
-  return alloy('sendEvent', {
-    documentUnloading: true,
-    xdm: xdmData,
-    edgeConfigOverrides: {
-      com_adobe_experience_platform: {
-        datasets: {
-          event: { datasetId: CONDOR_DATASET_ID },
-        },
-      },
-    },
-  });
-}
-
-/**
- * Basic tracking for assets views with alloy
- * @param document
- * @param additionalXdmFields
- * @returns {Promise<*>}
- */
-const idVersion = '4';
-export async function analyticsTrackAssets(assets) {
-  const xdmData = {
-    [CUSTOM_SCHEMA_NAMESPACE]: {
-      condor: {
-        assets: { ids: assets, idsVersion: idVersion },
-        experience: { id: getExperienceId(), idVersion },
-      },
-    },
-  };
-
-  return sendCondorEvent(xdmData);
-}
-
-/**
  * Sets Adobe standard v1.0 consent for alloy based on the input
  * Documentation: https://experienceleague.adobe.com/docs/experience-platform/edge/consent/supporting-consent.html?lang=en#using-the-adobe-standard-version-1.0
  * @param approved
@@ -316,10 +265,11 @@ export async function setupAnalyticsTrackingWithAlloy(document) {
   const pageViewPromise = analyticsTrackPageViews(document); // track page view early
 
   // assets tracking
-  const assetsPromise = trackAssets(document);
+  const assetsViewedPromise = trackAssetsViews(document);
+  const assetsClickedPromise = trackAssetsClicks(document);
 
   await import('./alloy.min.js');
-  await Promise.all([configurePromise, pageViewPromise, assetsPromise]);
+  await Promise.all([configurePromise, pageViewPromise, assetsViewedPromise, assetsClickedPromise]);
 }
 
 /**
@@ -538,10 +488,23 @@ export async function analyticsTrackVideo(
   return sendAnalyticsEvent(baseXdm);
 }
 
-// CONDOR
-const ASSETS_QUEUE_TIMEOUT = 2500; // 5 second
-
-function debounce(func, timeout = ASSETS_QUEUE_TIMEOUT) {
+/**
+ * Customer's Condor assets event dataset id
+ * @type {string}
+ */
+const CONDOR_DATASET_ID = '653bdd5474613028d25143cb';
+/**
+ * Condor events ids version
+ */
+const idVersion = '5';
+/**
+ * Assets views debounce timeout
+ */
+const ASSETS_VIEWS_DEBOUNCE_TIMEOUT = 2500; // 2.5 seconds
+/**
+ * Debounces a function
+ */
+function debounce(func, timeout = ASSETS_VIEWS_DEBOUNCE_TIMEOUT) {
   let timer;
   return (...args) => {
     clearTimeout(timer);
@@ -551,6 +514,9 @@ function debounce(func, timeout = ASSETS_QUEUE_TIMEOUT) {
   };
 }
 
+/**
+ * Extract asset url
+ */
 const assetSrcURL = (element) => {
   let value = element.currentSrc || element.src || element.getAttribute('src');
   if (value && value.startsWith('https://')) {
@@ -565,13 +531,69 @@ const assetSrcURL = (element) => {
   return srcURL;
 };
 
-// TODO: Send hits for this.
-export function checkTrackAssetsSupport() {
-  const hasIntersectionObserverSupport = !!window.IntersectionObserver;
-  const hasSetSupport = !!window.Set;
+/**
+ * Sends an analytics condor event to alloy
+ * @param xdmData - the xdm data object
+ * @returns {Promise<*>}
+ */
+async function sendCondorEvent(xdmData) {
+  // eslint-disable-next-line no-undef
+  if (!alloy) {
+    console.warn('alloy not initialized, cannot send analytics event');
+    return Promise.resolve();
+  }
+
+  // eslint-disable-next-line no-undef
+  return alloy('sendEvent', {
+    documentUnloading: true,
+    xdm: xdmData,
+    edgeConfigOverrides: { com_adobe_experience_platform: { datasets: { event: { datasetId: CONDOR_DATASET_ID } } } },
+  });
 }
 
-export function trackAssets(document) {
+/**
+ * Basic tracking for assets views with alloy
+ * @param document
+ * @param additionalXdmFields
+ * @returns {Promise<*>}
+ */
+export async function analyticsTrackAssetsViews(assets) {
+  const xdmData = {
+    [CUSTOM_SCHEMA_NAMESPACE]: {
+      condor: {
+        assets: { ids: assets, idsVersion: idVersion, type: 'viewed' },
+        experience: { id: getExperienceId(), idVersion },
+      },
+    },
+  };
+
+  return sendCondorEvent(xdmData);
+}
+
+/**
+ * Basic tracking for assets clicks with alloy
+ * @param document
+ * @param additionalXdmFields
+ * @returns {Promise<*>}
+ */
+export async function analyticsTrackAssetsClicked(assets, URL, linkType = 'other') {
+  const xdmData = {
+    eventType: 'web.webinteraction.linkClicks',
+    web: { webInteraction: { URL, linkClicks: { value: 1 }, type: linkType } },
+    [CUSTOM_SCHEMA_NAMESPACE]: {
+      condor: {
+        assets: { ids: assets, idsVersion: idVersion, type: 'clicked' },
+        experience: { id: getExperienceId(), idVersion },
+      },
+    },
+  };
+
+  return sendCondorEvent(xdmData);
+}
+
+// Assets views
+const assetsViews = new Set();
+export function trackAssetsViews(document) {
   const docAssets = document.querySelectorAll('picture > img');
   docAssets.forEach((assetElement) => {
     const tag = assetElement.tagName.toLowerCase();
@@ -579,13 +601,12 @@ export function trackAssets(document) {
       imageObserver.observe(assetElement);
     }
   });
-}
+};
 
-const assets = new Set();
 function drainAssetsQueue() {
-  if (assets.size) {
-    analyticsTrackAssets(Array.from(assets));
-    assets.clear();
+  if (assetsViews.size) {
+    analyticsTrackAssetsViews(Array.from(assetsViews));
+    assetsViews.clear();
   }
 }
 const debouncedDrainAssetsQueue = debounce(() => drainAssetsQueue());
@@ -598,10 +619,21 @@ const imageObserver = window.IntersectionObserver
           .filter((entry) => entry.isIntersecting)
           .forEach((entry) => {
             imageObserver.unobserve(entry.target);
-            assets.add(assetSrcURL(entry.target).href);
+            assetsViews.add(assetSrcURL(entry.target).href);
             debouncedDrainAssetsQueue();
           });
       },
       { threshold: 0.5 }
     )
   : { observe: () => {} };
+
+// Assets clicks
+export const trackAssetsClicks = (document) => {
+  const docAssets = document.querySelectorAll('a > picture > img');
+  docAssets.forEach((assetElement) => {
+    assetElement.addEventListener("click", () => {
+      const href = assetElement.parentElement.parentElement.href;
+      analyticsTrackAssetsClicked([assetSrcURL(assetElement).href], href, 'clicked');
+    });
+  });
+}
