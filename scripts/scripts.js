@@ -23,7 +23,6 @@ import {
   analyticsTrackCWV,
   analyticsTrackError,
   initAnalyticsTrackingQueue,
-  analyticsTrackAssets,
   setupAnalyticsTrackingWithAlloy,
 } from './analytics/lib-analytics.js';
 
@@ -252,8 +251,6 @@ async function loadLazy(doc) {
   sampleRUM('lazy');
   sampleRUM.observe(main.querySelectorAll('div[data-block-name]'));
   sampleRUM.observe(main.querySelectorAll('picture > img'));
-  sampleRUM.observeAssets(main.querySelectorAll('div[data-block-name]'));
-  sampleRUM.observeAssets(main.querySelectorAll('picture > img'));
 
   // Mark customer as having viewed the page once
   localStorage.setItem('franklin-visitor-returning', true);
@@ -305,57 +302,6 @@ window.addEventListener('beforeunload', () => {
 sampleRUM.always.on('cwv', async (data) => {
   if (!data.cwv) return;
   Object.assign(cwv, data.cwv);
-});
-
-const assets = []; // no need to worry about duplicates since after one intersection rum will remove the observer
-
-// Forward the RUM view assets cached measurements to edge using WebSDK before the page unloads
-window.addEventListener('beforeunload', () => {
-  if (!assets.length) return;
-  analyticsTrackAssets(assets);
-});
-
-const assetSrcURL = (element) => {
-  let value = element.currentSrc || element.src || element.getAttribute('src');
-  if (value && value.startsWith('https://')) {
-    // resolve relative links
-    const srcURL =  new URL(value, window.location);
-    srcURL.search = '';
-    return srcURL;
-  };
-
-  const srcURL = new URL(value);
-  srcURL.search = '';
-  return srcURL;
-};
-
-const imageObserver = (window.IntersectionObserver) ? new IntersectionObserver((entries) => {
-  entries
-    .filter((entry) => entry.isIntersecting)
-    .forEach((entry) => {
-      imageObserver.unobserve(entry.target); // observe only once
-      assets.push(assetSrcURL(entry.target).href);
-    });
-}, { threshold: 0.25 }) : { observe: () => {}};
-
-const videoObserver = (window.IntersectionObserver) ? new IntersectionObserver((entries) => {
-  entries
-    .filter((entry) => entry.isIntersecting)
-    .forEach((entry) => {
-      videoObserver.unobserve(entry.target); // observe only once
-      assets.push(assetSrcURL(entry.target).href);
-    });
-}, { threshold: 0.25 }) : { observe: () => {}};
-
-sampleRUM.drain('observeAssets', (elements) => {
-  elements.forEach((element) => {
-    const tag = element.tagName.toLowerCase();
-    if (tag === 'img') {
-      imageObserver.observe(element);
-    } else if (tag === 'video') {
-      videoObserver.observe(element);
-    }
-  });
 });
 
 sampleRUM.always.on('404', analyticsTrack404);
