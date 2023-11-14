@@ -504,7 +504,7 @@ const idVersion = '5';
 /**
  * Assets views debounce timeout
  */
-const ASSETS_VIEWS_DEBOUNCE_TIMEOUT = 2500; // 2.5 seconds
+const ASSETS_VIEWS_DEBOUNCE_TIMEOUT = 5000; // 2.5 seconds
 /**
  * Debounces a function
  */
