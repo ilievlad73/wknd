@@ -610,7 +610,8 @@ function drainAssetsQueue() {
   }
 }
 const debouncedDrainAssetsQueue = debounce(() => drainAssetsQueue());
-window.addEventListener('beforeunload', drainAssetsQueue);
+window.addEventListener('visibilitychange', drainAssetsQueue);
+window.addEventListener('pagehide', drainAssetsQueue);
 
 const imageObserver = window.IntersectionObserver
   ? new IntersectionObserver(
