@@ -195,6 +195,11 @@ export async function analyticsSetConsent(approved) {
     console.warn('alloy not initialized, cannot set consent');
     return Promise.resolve();
   }
+
+  if(approved) {
+    debouncedDrainAssetsQueue();
+  }
+
   // eslint-disable-next-line no-undef
   return alloy('setConsent', {
     consent: [
