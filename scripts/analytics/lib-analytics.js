@@ -15,6 +15,8 @@
  * @type {string}
  */
 const CUSTOM_SCHEMA_NAMESPACE = '_sitesinternal';
+let documentUnloading = false;
+
 
 /**
  * Returns experiment id and variant running
@@ -128,10 +130,12 @@ function enhanceAnalyticsEvent(options) {
  */
 function getAlloyConfiguration(document) {
   const { hostname } = document.location;
+  const debugEnabled = hostname.startsWith('localhost') || hostname.includes('--');
+  documentUnloading = !debugEnabled;
 
   return {
     // enable while debugging
-    debugEnabled: hostname.startsWith('localhost') || hostname.includes('--'),
+    debugEnabled,
     // disable when clicks are also tracked via sendEvent with additional details
     clickCollectionEnabled: true,
     // adjust default based on customer use case
@@ -174,7 +178,7 @@ async function sendAnalyticsEvent(xdmData) {
 
   // eslint-disable-next-line no-undef
   return alloy('sendEvent', {
-    documentUnloading: true,
+    documentUnloading,
     xdm: xdmData,
   });
 }
@@ -545,7 +549,7 @@ async function sendCondorEvent(xdmData) {
 
   // eslint-disable-next-line no-undef
   return alloy('sendEvent', {
-    documentUnloading: true,
+    documentUnloading,
     xdm: xdmData,
     edgeConfigOverrides: { com_adobe_experience_platform: { datasets: { event: { datasetId: CONDOR_DATASET_ID } } } },
   });
