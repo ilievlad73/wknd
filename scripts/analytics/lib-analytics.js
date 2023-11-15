@@ -585,7 +585,7 @@ export async function analyticsTrackAssetsViews(assets) {
  * @param additionalXdmFields
  * @returns {Promise<*>}
  */
-export async function analyticsTrackAssetsClicked(assets, URL, linkType = 'other') {
+export async function analyticsTrackAssetsClicked(assets, URL, linkType = 'other') { // linkType can be 'download' or 'other'
   const xdmData = {
     eventType: 'web.webinteraction.linkClicks',
     web: { webInteraction: { URL, linkClicks: { value: 1 }, type: linkType } },
@@ -643,7 +643,7 @@ export const trackAssetsClicks = (document) => {
   docAssets.forEach((assetElement) => {
     assetElement.addEventListener("click", () => {
       const href = assetElement.parentElement.parentElement.href;
-      analyticsTrackAssetsClicked([assetSrcURL(assetElement).href], href, 'clicked');
+      analyticsTrackAssetsClicked([assetSrcURL(assetElement).href], href);
     });
   });
 }
