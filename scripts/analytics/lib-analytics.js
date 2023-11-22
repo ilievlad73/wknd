@@ -17,7 +17,6 @@
 const CUSTOM_SCHEMA_NAMESPACE = '_sitesinternal';
 let documentUnloading = false;
 
-
 /**
  * Returns experiment id and variant running
  * @returns {{experimentVariant: *, experimentId}}
@@ -111,11 +110,30 @@ function getDatastreamConfiguration() {
 }
 
 /**
+ * Condor asset, experience ids version
+ */
+const condorAssetIdVersion = '5';
+const condorExperienceIdVersion = '5';
+/**
  * Enhance all events with additional details, like experiment running,
- * before sending them to the edge
+ * before sending them to the edge EXCEPT for condor events.
  * @param options event in the XDM schema format
  */
 function enhanceAnalyticsEvent(options) {
+  // Bypass default enhancements for condor events
+  if (options.xdm[CUSTOM_SCHEMA_NAMESPACE] && options.xdm[CUSTOM_SCHEMA_NAMESPACE].condor) {
+    // TODO: Drop some of the default tracking props: Custom customer logic
+    delete options.xdm.device;
+    delete options.xdm.implementationDetails;
+    delete options.xdm.placeContext;
+    delete options.xdm.environment;
+    options.xdm[CUSTOM_SCHEMA_NAMESPACE].condor.implementationDetails = {
+      assetIdVersion: condorAssetIdVersion,
+      experienceIdVersion: condorExperienceIdVersion,
+    };
+    return;
+  }
+
   const experiment = getExperimentDetails();
   options.xdm[CUSTOM_SCHEMA_NAMESPACE] = {
     ...options.xdm[CUSTOM_SCHEMA_NAMESPACE],
@@ -251,7 +269,7 @@ export async function initAnalyticsTrackingQueue() {
     document,
     document.body,
     getAlloyInitScript(),
-    'text/javascript'
+    'text/javascript',
   );
 }
 
@@ -464,7 +482,7 @@ export async function analyticsTrackFormSubmission(
  */
 export async function analyticsTrackVideo(
   { id, name, type, hasStarted, hasCompleted, progressMarker },
-  additionalXdmFields
+  additionalXdmFields,
 ) {
   const primaryAssetReference = {
     id: `${id}`,
@@ -501,11 +519,8 @@ export async function analyticsTrackVideo(
  * Customer's Condor assets event dataset id
  * @type {string}
  */
-const CONDOR_DATASET_ID = '653bdd5474613028d25143cb';
-/**
- * Condor events ids version
- */
-const idVersion = '5';
+const CONDOR_DATASET_ID = '655e1f4aea251428d3821ea8';
+
 /**
  * Assets views debounce timeout
  */
@@ -527,7 +542,7 @@ function debounce(func, timeout = ASSETS_VIEWS_DEBOUNCE_TIMEOUT) {
  * Extract asset url
  */
 const assetSrcURL = (element) => {
-  let value = element.currentSrc || element.src || element.getAttribute('src');
+  const value = element.currentSrc || element.src || element.getAttribute('src');
   if (value && value.startsWith('https://')) {
     // resolve relative links
     const srcURL = new URL(value, window.location);
@@ -556,22 +571,26 @@ async function sendCondorEvent(xdmData) {
   return alloy('sendEvent', {
     documentUnloading,
     xdm: xdmData,
-    edgeConfigOverrides: { com_adobe_experience_platform: { datasets: { event: { datasetId: CONDOR_DATASET_ID } } } },
+    edgeConfigOverrides: {
+      com_adobe_experience_platform: {
+        datasets: { event: { datasetId: CONDOR_DATASET_ID } }
+      },
+    },
   });
 }
 
 /**
  * Basic tracking for assets views with alloy
- * @param document
- * @param additionalXdmFields
+ * @param assets - string[]
  * @returns {Promise<*>}
  */
 export async function analyticsTrackAssetsViews(assets) {
   const xdmData = {
     [CUSTOM_SCHEMA_NAMESPACE]: {
       condor: {
-        assets: { ids: assets, idsVersion: idVersion, type: 'viewed' },
-        experience: { id: getExperienceId(), idVersion },
+        assets: { ids: assets, type: 'image' },
+        experience: { id: getExperienceId() },
+        eventType: 'viewed',
       },
     },
   };
@@ -581,18 +600,19 @@ export async function analyticsTrackAssetsViews(assets) {
 
 /**
  * Basic tracking for assets clicks with alloy
- * @param document
- * @param additionalXdmFields
+ * @param url - string
+ * @param assets - string[]
  * @returns {Promise<*>}
  */
-export async function analyticsTrackAssetsClicked(assets, URL, linkType = 'other') { // linkType can be 'download' or 'other'
+export async function analyticsTrackAssetsClicked(assets, URL) {
   const xdmData = {
     eventType: 'web.webinteraction.linkClicks',
-    web: { webInteraction: { URL, linkClicks: { value: 1 }, type: linkType } },
+    web: { webInteraction: { URL, linkClicks: { value: 1 }, type: 'other' } }, // linkType can be 'download' or 'other'
     [CUSTOM_SCHEMA_NAMESPACE]: {
       condor: {
-        assets: { ids: assets, idsVersion: idVersion, type: 'clicked' },
-        experience: { id: getExperienceId(), idVersion },
+        assets: { ids: assets, type: 'image' },
+        experience: { id: getExperienceId() },
+        eventType: 'clicked',
       },
     },
   };
@@ -624,17 +644,17 @@ window.addEventListener('pagehide', drainAssetsQueue);
 
 const imageObserver = window.IntersectionObserver
   ? new IntersectionObserver(
-      (entries) => {
-        entries
-          .filter((entry) => entry.isIntersecting)
-          .forEach((entry) => {
-            imageObserver.unobserve(entry.target);
-            assetsViews.add(assetSrcURL(entry.target).href);
-            debouncedDrainAssetsQueue();
-          });
-      },
-      { threshold: 0.5 }
-    )
+    (entries) => {
+      entries
+        .filter((entry) => entry.isIntersecting)
+        .forEach((entry) => {
+          imageObserver.unobserve(entry.target);
+          assetsViews.add(assetSrcURL(entry.target).href);
+          debouncedDrainAssetsQueue();
+        });
+    },
+    { threshold: 0.5 },
+  )
   : { observe: () => {} };
 
 // Assets clicks
