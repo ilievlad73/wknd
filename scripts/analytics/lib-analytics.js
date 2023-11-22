@@ -122,11 +122,12 @@ const condorExperienceIdVersion = '5';
 function enhanceAnalyticsEvent(options) {
   // Bypass default enhancements for condor events
   if (options.xdm[CUSTOM_SCHEMA_NAMESPACE] && options.xdm[CUSTOM_SCHEMA_NAMESPACE].condor) {
-    // TODO: Drop some of the default tracking props: Custom customer logic
+    // TODO: Drop some of the default tracking props
     delete options.xdm.device;
     delete options.xdm.implementationDetails;
     delete options.xdm.placeContext;
     delete options.xdm.environment;
+    // Optional: Add condor implementation details
     options.xdm[CUSTOM_SCHEMA_NAMESPACE].condor.implementationDetails = {
       assetIdVersion: condorAssetIdVersion,
       experienceIdVersion: condorExperienceIdVersion,
