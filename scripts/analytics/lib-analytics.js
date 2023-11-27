@@ -185,7 +185,7 @@ function createInlineScript(document, element, innerHTML, type) {
  * @param xdmData - the xdm data object
  * @returns {Promise<*>}
  */
-async function sendAnalyticsEvent(xdmData) {
+async function sendAnalyticsEvent(xdmData, renderDecisions = false) {
   // eslint-disable-next-line no-undef
   if (!alloy) {
     console.warn('alloy not initialized, cannot send analytics event');
@@ -197,6 +197,7 @@ async function sendAnalyticsEvent(xdmData) {
 
   // eslint-disable-next-line no-undef
   return alloy('sendEvent', {
+    renderDecisions,
     documentUnloading,
     xdm: xdmData,
   });
@@ -258,7 +259,7 @@ export async function analyticsTrackPageViews(
     },
   };
 
-  return sendAnalyticsEvent(xdmData);
+  return sendAnalyticsEvent(xdmData, true);
 }
 
 /**
