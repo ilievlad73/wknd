@@ -261,7 +261,7 @@ export async function analyticsTrackPageViews(
   };
 
   return sendAnalyticsEvent(xdmData, true, ['eyJ4ZG06YWN0aXZpdHlJZCI6Inhjb3JlOm9mZmVyLWFjdGl2aXR5OjE4MDA3MmY0NjY1YzlmZjEiLCJ4ZG06cGxhY2VtZW50SWQiOiJ4Y29yZTpvZmZlci1wbGFjZW1lbnQ6MTgwMDcxMWU2ZWRjOWZmMCJ9']).then(result => {
-    console.log('analyticsTrackPageViews', result);
+    console.log('analyticsTrackPageViews result propositions', result);
   });
 }
 
