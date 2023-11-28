@@ -185,7 +185,7 @@ function createInlineScript(document, element, innerHTML, type) {
  * @param xdmData - the xdm data object
  * @returns {Promise<*>}
  */
-async function sendAnalyticsEvent(xdmData, renderDecisions = false) {
+async function sendAnalyticsEvent(xdmData, renderDecisions = false, decisionScopes = []) {
   // eslint-disable-next-line no-undef
   if (!alloy) {
     console.warn('alloy not initialized, cannot send analytics event');
@@ -200,6 +200,7 @@ async function sendAnalyticsEvent(xdmData, renderDecisions = false) {
     renderDecisions,
     documentUnloading,
     xdm: xdmData,
+    decisionScopes,
   });
 }
 
@@ -259,7 +260,9 @@ export async function analyticsTrackPageViews(
     },
   };
 
-  return sendAnalyticsEvent(xdmData, true);
+  return sendAnalyticsEvent(xdmData, true, ['eyJ4ZG06YWN0aXZpdHlJZCI6Inhjb3JlOm9mZmVyLWFjdGl2aXR5OjE4MDA3MmY0NjY1YzlmZjEiLCJ4ZG06cGxhY2VtZW50SWQiOiJ4Y29yZTpvZmZlci1wbGFjZW1lbnQ6MTgwMDcxMWU2ZWRjOWZmMCJ9']).then(result => {
+    console.log('analyticsTrackPageViews', result);
+  });
 }
 
 /**
