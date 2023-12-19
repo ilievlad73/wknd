@@ -525,7 +525,7 @@ export async function analyticsTrackVideo(
  * Customer's Condor assets event dataset id
  * @type {string}
  */
-const CONDOR_DATASET_ID = '655e1f4aea251428d3821ea8';
+const CONDOR_DATASET_ID = '653bdd5474613028d25143cb';
 
 /**
  * Assets views debounce timeout
